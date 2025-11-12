@@ -1,0 +1,25 @@
+# Core dependencies
+opencv-python==4.8.1.78
+numpy==1.24.3
+
+# LiveKit streaming
+livekit==0.12.0
+livekit-api==0.5.0
+
+# SIYI SDK - Communication with MK15
+pyserial==3.5
+pymavlink==2.4.40
+
+# Web UI and API
+flask==3.0.0
+flask-cors==4.0.0
+flask-socketio==5.3.5
+python-socketio==5.10.0
+
+# Telemetry and system monitoring
+psutil==5.9.6
+pyzmq==25.1.1
+
+# Configuration and utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1
