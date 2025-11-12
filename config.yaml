@@ -1,0 +1,45 @@
+# Configuration for Jetson Camera Stream with SIYI MK15
+
+camera:
+  # Jetson camera settings
+  device_id: 0  # Camera device ID (usually 0 for CSI camera)
+  width: 1920
+  height: 1080
+  fps: 30
+  # For CSI cameras on Jetson, use: "nvarguscamerasrc"
+  # For USB cameras, use: "v4l2src"
+  source_type: "nvarguscamerasrc"  # or "v4l2src" for USB
+
+livekit:
+  url: "wss://your-livekit-server.com"  # Replace with your LiveKit server URL
+  api_key: "your-api-key"  # Replace with your LiveKit API key
+  api_secret: "your-api-secret"  # Replace with your LiveKit API secret
+  room_name: "jetson-camera-stream"
+  participant_name: "jetson-camera"
+
+siyi_mk15:
+  # SIYI MK15 transmitter settings
+  serial_port: "/dev/ttyUSB0"  # Adjust based on your connection
+  baudrate: 115200
+  # SIYI MK15 protocol settings
+  protocol_version: "1.0"
+  enable_video_transmission: true
+  video_quality: "high"  # high, medium, low
+
+telemetry:
+  # Telemetry data settings
+  update_rate: 10  # Hz
+  include_gps: true
+  include_attitude: true
+  include_battery: true
+  include_system_stats: true
+
+ui:
+  # Web UI settings
+  host: "0.0.0.0"
+  port: 8080
+  enable_websocket: true
+
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/jetson_stream.log"
