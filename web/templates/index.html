@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jetson Camera Stream - SIYI MK15</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🎥 Jetson Camera Stream Monitor</h1>
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Panel: Video Stream -->
+            <div class="panel video-panel">
+                <h2>📹 Live Video Feed</h2>
+                <div class="video-container">
+                    <img id="videoFeed" src="{{ url_for('video_feed') }}" alt="Video Stream">
+                    <div class="video-overlay">
+                        <div class="fps-counter" id="fpsCounter">FPS: --</div>
+                    </div>
+                </div>
+                <div class="stream-info">
+                    <div class="info-item">
+                        <span class="label">Camera FPS:</span>
+                        <span class="value" id="cameraFps">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Stream FPS:</span>
+                        <span class="value" id="streamFps">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">SIYI Status:</span>
+                        <span class="value status" id="siyiStatus">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">LiveKit Status:</span>
+                        <span class="value status" id="livekitStatus">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Telemetry -->
+            <div class="panel telemetry-panel">
+                <h2>📊 System Telemetry</h2>
+                
+                <!-- CPU Usage -->
+                <div class="metric-card">
+                    <h3>💻 CPU Usage</h3>
+                    <div class="metric-value">
+                        <span class="value-large" id="cpuUsage">--</span>
+                        <span class="unit">%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="cpuProgress"></div>
+                    </div>
+                </div>
+
+                <!-- Memory Usage -->
+                <div class="metric-card">
+                    <h3>🧠 Memory Usage</h3>
+                    <div class="metric-value">
+                        <span class="value-large" id="memoryUsage">--</span>
+                        <span class="unit">%</span>
+                    </div>
+                    <div class="metric-detail">
+                        <span id="memoryDetail">-- MB / -- MB</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="memoryProgress"></div>
+                    </div>
+                </div>
+
+                <!-- GPU Usage -->
+                <div class="metric-card">
+                    <h3>🎮 GPU Usage</h3>
+                    <div class="metric-value">
+                        <span class="value-large" id="gpuUsage">--</span>
+                        <span class="unit">%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill gpu" id="gpuProgress"></div>
+                    </div>
+                </div>
+
+                <!-- Temperature -->
+                <div class="metric-card">
+                    <h3>🌡️ Temperature</h3>
+                    <div id="temperatureList" class="temperature-list">
+                        <div class="temp-item">
+                            <span>CPU:</span>
+                            <span id="cpuTemp">-- °C</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Stats -->
+                <div class="metric-card">
+                    <h3>🌐 Network</h3>
+                    <div class="network-stats">
+                        <div class="stat-row">
+                            <span>↑ Sent:</span>
+                            <span id="bytesSent">-- MB</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>↓ Received:</span>
+                            <span id="bytesRecv">-- MB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>Jetson Camera Stream with SIYI MK15 | Last Update: <span id="lastUpdate">--</span></p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

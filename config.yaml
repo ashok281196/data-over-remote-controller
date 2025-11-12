@@ -1,0 +1,56 @@
+# Jetson Camera Streaming Configuration
+
+# Camera Settings
+camera:
+  device_id: 0  # /dev/video0
+  width: 1920
+  height: 1080
+  fps: 30
+  format: "MJPG"  # or "YUYV"
+  use_gstreamer: true  # Enable GStreamer pipeline for better performance on Jetson
+  gstreamer_pipeline: "nvarguscamerasrc sensor-id={device_id} ! video/x-raw(memory:NVMM), width={width}, height={height}, framerate={fps}/1 ! nvvidconv ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink"
+
+# SIYI MK15 Settings
+siyi:
+  enabled: true
+  port: "/dev/ttyUSB0"  # Serial port for SIYI communication
+  baudrate: 115200
+  video_output_port: 5600  # UDP port for video stream to SIYI
+  transmitter_ip: "192.168.144.25"  # Default SIYI MK15 IP
+  telemetry_rate_hz: 10
+
+# LiveKit Settings
+livekit:
+  enabled: true
+  url: "ws://localhost:7880"  # LiveKit server URL
+  api_key: "your-api-key"
+  api_secret: "your-api-secret"
+  room_name: "jetson-camera-stream"
+  participant_name: "jetson-device"
+  video_bitrate: 2000000  # 2 Mbps
+  audio_enabled: false
+
+# Telemetry Settings
+telemetry:
+  enabled: true
+  rate_hz: 5  # Telemetry update rate
+  metrics:
+    - cpu_usage
+    - memory_usage
+    - gpu_usage
+    - temperature
+    - network_stats
+    - camera_fps
+
+# Web UI Settings
+web_ui:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  debug: false
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_to_file: true
+  log_file: "logs/stream.log"
