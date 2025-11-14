@@ -1,172 +1,179 @@
-# Using Jetson with SIYI MK15 for Ethernet Video Streaming
+# Bringing Up the SIYI MK15 Ethernet Network on Jetson/Linux
 
-**Purpose:**  
-Connect an NVIDIA Jetson board to a **SIYI MK15 Air Unit** via Ethernet, stream camera output (CSI or USB) as **RTSP**, and display it live on the **MK15 Ground Controller** (FPV app or QGroundControl).
-
----
-
-## 1. Overview
-The SIYI MK15 supports external IP cameras over Ethernet.  
-By wiring Jetson’s Ethernet port to the MK15 Air Unit’s *Video* port and hosting an RTSP stream, the MK15 controller can view Jetson’s camera feed in real-time.
+This guide explains how to:
+- Identify the MK15 Ethernet interface  
+- Assign a static IP  
+- Stop NetworkManager from resetting or closing the interface  
+- Make the connection persistent  
+- Verify stable communication with the MK15 Air Unit
 
 ---
 
-## 2. Hardware Requirements
+## 1. Identify Your Ethernet Interface
 
-- ✅ **SIYI MK15 Air Unit** (with original “Video” cable)  
-- ✅ **NVIDIA Jetson Nano / Xavier / Orin**  
-- ✅ **RJ45 Ethernet plug or breakout board**  
-- ✅ **Multimeter** (for pin continuity)  
-- ✅ **Cat-5e/Cat-6 shielded cable** (recommended)
-
----
-
-## 3. MK15 Air Unit Video Port Pinout
-
-| Pin | Signal | Description |
-|:--:|:--|:--|
-| 1 | D2 | Reserved / unused |
-| 2 | RX- | Ethernet receive (−) |
-| 3 | RX+ | Ethernet receive (+) |
-| 4 | TX+ | Ethernet transmit (+) |
-| 5 | TX- | Ethernet transmit (−) |
-| 6 | GND | Ground |
-| 7 | 12 V | **Power output (⚠️ Do NOT connect to Jetson)** |
-| 8 | GND | Ground |
-
-> Only use pins **2–5** for data and **6/8** for optional grounding.
-
----
-
-## 4. RJ45 Ethernet Mapping (T568B Standard)
-
-| RJ45 Pin | Signal | Color (Typical) |
-|:--:|:--|:--|
-| 1 | TX+ | Orange/White |
-| 2 | TX- | Orange |
-| 3 | RX+ | Green/White |
-| 6 | RX- | Green |
-
----
-
-## 5. Wiring Table
-
-| MK15 Pin | RJ45 Pin | Function |
-|:--:|:--:|:--|
-| 2 (RX-) | 6 | RX− |
-| 3 (RX+) | 3 | RX+ |
-| 4 (TX+) | 1 | TX+ |
-| 5 (TX-) | 2 | TX− |
-| 6 or 8 (GND) | RJ45 shield | Ground (optional) |
-
-Use **straight-through wiring** (not crossover).  
-⚠️ **Do NOT connect pin 7 (12 V)** to anything on Jetson.
-
----
-
-## 6. Cable Assembly Steps
-
-1. Identify wire colors on the MK15 “Video” cable using a multimeter.  
-2. Crimp the other end to an RJ45 plug using the mapping above.  
-3. Ensure the 12 V line is isolated.  
-4. Optionally tie GND (pin 6 / 8) to RJ45 shield for stability.
-
----
-
-## 7. Network Configuration
-
-### MK15 Default IP Scheme
-
-| Device | IP Address |
-|:--|:--|
-| Air Unit | `192.168.144.11` |
-| Ground Unit | `192.168.144.12` |
-| Android Controller | `192.168.144.20` |
-
-### Set Static IP on Jetson
+Run:
 
 ```bash
-sudo ip addr add 192.168.144.25/24 dev eth0
-sudo ip link set eth0 up
+ip a
+```
+
+Find the Ethernet interface connected to the MK15 Air Unit.  
+Example:
+
+```
+enxc8a3624fb799
+```
+
+This is the interface we will configure.
+
+---
+
+## 2. Stop NetworkManager From Managing or Closing the Interface
+
+NetworkManager interferes by:
+- Removing the static IP  
+- Setting the link down  
+- Reinitializing the interface randomly  
+
+To completely stop that:
+
+### 2.1 Mark the interface as unmanaged
+
+```bash
+sudo nmcli dev set enxc8a3624fb799 managed no
+```
+
+Check the status:
+
+```bash
+nmcli dev status
+```
+
+Expected line:
+
+```
+enxc8a3624fb799  ethernet  unmanaged  --
+```
+
+### 2.2 Remove any active NM connection profiles
+
+```bash
+sudo nmcli connection delete "$(nmcli -t -f NAME,DEVICE connection show | grep enxc8a3624fb799 | cut -d: -f1)"
+```
+
+### 2.3 Tell NetworkManager to permanently ignore this interface
+
+Edit the NM config:
+
+```bash
+sudo nano /etc/NetworkManager/NetworkManager.conf
+```
+
+Add:
+
+```ini
+[keyfile]
+unmanaged-devices=interface-name:enxc8a3624fb799
+```
+
+Reload NM:
+
+```bash
+sudo systemctl restart NetworkManager
+```
+
+Now NM will **never** modify or close this interface.
+
+---
+
+## 3. Assign the Static MK15 IP
+
+Flush old settings:
+
+```bash
+sudo ip addr flush dev enxc8a3624fb799
+```
+
+Assign:
+
+```bash
+sudo ip addr add 192.168.144.25/24 dev enxc8a3624fb799
+sudo ip link set enxc8a3624fb799 up
+```
+
+Verify:
+
+```bash
+ip a show enxc8a3624fb799
+```
+
+You should see:
+
+```
+inet 192.168.144.25/24
+```
+
+---
+
+## 4. Test MK15 Air Unit Connectivity
+
+Air Unit default IP: `192.168.144.11`
+
+```bash
 ping 192.168.144.11
 ```
 
-If ping responds, the Ethernet link is working.
+If you get stable replies → network is working correctly.
 
 ---
 
-## 8. Setting up the RTSP Stream
+## 5. Make the Static IP Permanent (systemd-networkd)
 
-### Install GStreamer
+Optional but recommended.
+
+Create:
 
 ```bash
-sudo apt update
-sudo apt install gstreamer1.0-tools   gstreamer1.0-plugins-good gstreamer1.0-plugins-bad   gstreamer1.0-plugins-ugly gstreamer1.0-nvvideo4linux2   gstreamer1.0-rtsp
+sudo nano /etc/systemd/network/10-mk15.network
 ```
 
-### Start RTSP Server (Jetson CSI Camera)
+Paste:
+
+```ini
+[Match]
+Name=enxc8a3624fb799
+
+[Network]
+Address=192.168.144.25/24
+DHCP=no
+LinkLocalAddressing=no
+```
+
+Apply:
 
 ```bash
-test-launch '( nvarguscamerasrc ! video/x-raw(memory:NVMM),width=1280,height=720,framerate=30/1 ! nvv4l2h264enc insert-sps-pps=true iframeinterval=30 bitrate=4000000 ! h264parse config-interval=1 ! rtph264pay name=pay0 pt=96 )'
+sudo systemctl restart systemd-networkd
 ```
 
-This exposes:  
-👉 `rtsp://192.168.144.25:8554/test`
+---
+
+## 6. Summary
+
+- MK15 Ethernet uses static IP **192.168.144.x**  
+- NetworkManager must be **disabled** for this interface  
+- Static IP is applied using `ip addr add`  
+- Ping confirms the Air Unit connection  
+- Optional: use systemd-networkd for persistence  
 
 ---
 
-## 9. Viewing the Stream on MK15 Controller
+## 7. Verification Checklist
 
-### **SIYI FPV App**
-1. Open **Settings → Camera IP / RTSP URL**  
-2. Enter `rtsp://192.168.144.25:8554/test`  
-3. Tap **Connect** → Live video appears
-
-### **QGroundControl**
-1. Go to **Application Settings → Video**  
-2. Set *Video Source* → **RTSP**  
-3. Paste the same RTSP URL
+- [ ] `nmcli dev status` shows interface as **unmanaged**  
+- [ ] `ip a` shows `192.168.144.25/24`  
+- [ ] Stable ping to `192.168.144.11`  
+- [ ] Interface no longer drops unexpectedly  
 
 ---
 
-## 10. Verification Checklist
-
-- ✅ Ethernet LEDs lit on Jetson  
-- ✅ `ping 192.168.144.11` works  
-- ✅ RTSP server reachable  
-- ✅ Video visible in FPV or QGC  
-
----
-
-## 11. Troubleshooting
-
-| Problem | Cause | Fix |
-|:--|:--|:--|
-| No link light | Incorrect pin wiring | Recheck pins 2–5 only |
-| No ping | Wrong IP range | Use 192.168.144.x/24 |
-| No video | Wrong codec | Use **H.264** only |
-| Laggy stream | Missing keyframes | Add `insert-sps-pps=true iframeinterval=30` |
-| Dropped frames | Bitrate too high | Lower to 3–4 Mbps |
-
----
-
-## 12. Safety Notes
-
-- ⚠️ **Do NOT connect 12 V pin 7** to Jetson.  
-- Always use shielded cable near RF modules.  
-- Common-ground only if needed to eliminate noise.
-
----
-
-## 13. Summary
-
-After setup:
-- Jetson acts as an **IP camera node** for the MK15.
-- Stream any CSI or USB camera feed wirelessly.
-- Compatible with **GStreamer**, **FFmpeg**, and **MediaMTX**.
-
----
-
-**Author:** General Autonomy Robotics Team  
-**Revision:** v1.0 — Jetson ↔ MK15 Ethernet RTSP Integration  
-**Date:** November 2025
+**End of Guide — MK15 Ethernet Link Stable & Ready for Video Streaming**
